@@ -14,7 +14,8 @@ from donkeycar import utils
 from donkeycar.utils import clamp
 
 #my additions
-from donkeycar.parts import odometer
+# from donkeycar.parts import odometer
+from donkeycar.parts.encoder_tracking.py import velocity_queue
 
 logger = logging.getLogger(__name__)
 
@@ -370,6 +371,11 @@ class PWMThrottle:
 
     def run_threaded(self, throttle):
         throttle = utils.clamp(throttle, self.MIN_THROTTLE, self.MAX_THROTTLE)
+
+        # read velocity data from shared queue
+        current_velocity = velocity_queue.top()
+        print(f"current_velocity: ", current_velocity)
+        
         if throttle > 0:
             self.pulse = dk.utils.map_range(throttle, 0, self.MAX_THROTTLE,
                                             self.zero_pulse, self.max_pulse)
