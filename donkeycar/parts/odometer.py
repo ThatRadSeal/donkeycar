@@ -2,7 +2,7 @@ import time
 from typing import Tuple
 
 #import queue to track velocity between threads
-import queue
+from donkeycar.parts.encoder_tracking import velocity_queue
 
 #from donkeycar.utilities.circular_buffer import CircularBuffer
 
@@ -23,7 +23,7 @@ class Odometer:
         self.reading = (0, 0, None) # distance, velocity, timestamp
         
         # add queue to keep track of just velocity
-        self.velocity_queue = queue.Queue()
+        # self.velocity_queue = queue.Queue()
 
     def poll(self, revolutions:int, timestamp:float=None):
         if self.running:
@@ -39,7 +39,7 @@ class Odometer:
                     velocity = (distance - lastDistance) / (timestamp - lastTimestamp)
 
             #enqueue velocity
-            self.velocity_queue.put(velocity)
+            velocity_queue.put(velocity)
             
             #self.queue.enqueue((distance, velocity, timestamp))
 
