@@ -13,6 +13,9 @@ import donkeycar as dk
 from donkeycar import utils
 from donkeycar.utils import clamp
 
+#my additions
+from donkeycar.parts import odometer
+
 logger = logging.getLogger(__name__)
 
 try:
