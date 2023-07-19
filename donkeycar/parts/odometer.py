@@ -1,7 +1,10 @@
 import time
 from typing import Tuple
 
-from donkeycar.utilities.circular_buffer import CircularBuffer
+#import queue to track velocity between threads
+import queue
+
+#from donkeycar.utilities.circular_buffer import CircularBuffer
 
 
 class Odometer:
@@ -15,9 +18,12 @@ class Odometer:
         self.timestamp:float = 0
         self.revolutions:float = 0
         self.running:bool = True
-        self.queue = CircularBuffer(smoothing_count if smoothing_count >= 1 else 1)
+        #self.queue = CircularBuffer(smoothing_count if smoothing_count >= 1 else 1)
         self.debug = debug
         self.reading = (0, 0, None) # distance, velocity, timestamp
+        
+        # add queue to keep track of just velocity
+        self.velocity_queue = queue.Queue()
 
     def poll(self, revolutions:int, timestamp:float=None):
         if self.running:
@@ -31,7 +37,11 @@ class Odometer:
                 lastDistance, lastVelocity, lastTimestamp = self.queue.tail()
                 if timestamp > lastTimestamp:
                     velocity = (distance - lastDistance) / (timestamp - lastTimestamp)
-            self.queue.enqueue((distance, velocity, timestamp))
+
+            #enqueue velocity
+            self.velocity_queue.put(velocity)
+            
+            #self.queue.enqueue((distance, velocity, timestamp))
 
             #
             # Assignment in Python is atomic and so it is threadsafe
