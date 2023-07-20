@@ -14,6 +14,7 @@ from .memory import Memory
 from prettytable import PrettyTable
 import traceback
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,7 +60,7 @@ class PartProfiler:
 
 
 class Vehicle:
-    def __init__(self, mem=None):
+    def __init__(self, max_speed, mem=None):
 
         if not mem:
             mem = Memory()
@@ -68,6 +69,12 @@ class Vehicle:
         self.on = True
         self.threads = []
         self.profiler = PartProfiler()
+
+        #add these for keeping track of speed
+        self.constant_speed = max_speed
+        self.prev_speed = []
+        self.speed_data = open("speed_data.txt", "a") # used for graphing speed
+        self.speed_data.write("Record of enc/speed values:\n")
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -202,6 +209,20 @@ class Vehicle:
                 self.profiler.on_part_start(p)
                 # get inputs from memory
                 inputs = self.mem.get(entry['inputs'])
+
+                # change PWM Throttle if too low of a speed
+                if p.__class__.__name__ == "PWMThrottle":   
+                    if inputs == [1]:
+                        if len(self.prev_speed) >= 100:
+                            curr_speed = self.average_speed()
+                            self.prev_speed = []
+                            if curr_speed < (self.constant_speed - (0.1 * self.constant_speed)):
+                                p.max_pulse += 1
+                            if curr_speed > (self.constant_speed + (0.1 * self.constant_speed)):
+                                p.max_pulse -= 1
+                            print(f"recorded average speed: ", curr_speed)
+                            print(f"new PWM value: ", p.max_pulse)
+
                 # run the part
                 if entry.get('thread'):
                     outputs = p.run_threaded(*inputs)
@@ -211,11 +232,19 @@ class Vehicle:
                 # save the output to memory
                 if outputs is not None:
                     self.mem.put(entry['outputs'], outputs)
+                    # get speed output if part is encoder
+                    if p.__class__.__name__ == "BicyclePose":
+                        # write speed data if full throttle
+                        if inputs[0] == 1:
+                            self.speed_data.write(str(self.prev_speed) + "\n")
+                            self.prev_speed.append(outputs[1])
+
                 # finish timing part run
                 self.profiler.on_part_finished(p)
 
     def stop(self):        
         logger.info('Shutting down vehicle and its parts...')
+        
         for entry in self.parts:
             try:
                 entry['part'].shutdown()
@@ -226,3 +255,8 @@ class Vehicle:
                 logger.error(e)
 
         self.profiler.report()
+
+    def average_speed(self):
+        return sum(self.prev_speed) / len(self.prev_speed)
+
+
