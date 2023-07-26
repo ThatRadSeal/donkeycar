@@ -780,6 +780,48 @@ class KerasLatent(KerasPilot):
         return steering[0][0], throttle[0][0]
 
 
+class KerasVelocity(KerasPilot):
+    """
+    The KerasVelocity pilot uses one neuron to output a continuous value via
+    the Keras Dense layer with linear activation. One each for steering and
+    throttle. The output is not bounded. The only difference between this and 
+    KerasLinear is that this uses speed as input instead of throttle
+    """
+    def __init__(self,
+                 interpreter: Interpreter = KerasInterpreter(),
+                 input_shape: Tuple[int, ...] = (120, 160, 3),
+                 num_outputs: int = 2):
+        self.num_outputs = num_outputs
+        super().__init__(interpreter, input_shape)
+
+    def create_model(self):
+        return default_n_linear(self.num_outputs, self.input_shape)
+
+    def compile(self):
+        self.interpreter.compile(optimizer=self.optimizer, loss='mse')
+
+    def interpreter_to_output(self, interpreter_out):
+        steering = interpreter_out[0]
+        throttle = interpreter_out[1]
+        return steering[0], throttle[0]
+
+    def y_transform(self, record: Union[TubRecord, List[TubRecord]]) \
+            -> Dict[str, Union[float, List[float]]]:
+        assert isinstance(record, TubRecord), 'TubRecord expected'
+        angle: float = record.underlying['user/angle']
+        throttle: float = record.underlying['enc/speed']
+        return {'n_outputs0': angle, 'n_outputs1': throttle}
+
+    def output_shapes(self):
+        # need to cut off None from [None, 120, 160, 3] tensor shape
+        img_shape = self.get_input_shapes()[0][1:]
+        shapes = ({'img_in': tf.TensorShape(img_shape)},
+                  {'n_outputs0': tf.TensorShape([]),
+                   'n_outputs1': tf.TensorShape([])})
+        return shapes
+
+
+
 def conv2d(filters, kernel, strides, layer_num, activation='relu'):
     """
     Helper function to create a standard valid-padded convolutional layer
