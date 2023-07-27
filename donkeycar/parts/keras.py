@@ -802,6 +802,7 @@ class KerasVelocity(KerasPilot):
                            num_inputs=self.num_inputs,
                            input_shape=self.input_shape)
 
+
     def compile(self):
         self.interpreter.compile(optimizer=self.optimizer, loss='mse')
 
@@ -818,7 +819,7 @@ class KerasVelocity(KerasPilot):
         assert isinstance(record, TubRecord), "TubRecord expected"
         angle: float = record.underlying['user/angle']
         throttle: float = record.underlying['user/throttle']
-        return {'out_0': angle, 'out_1': throttle}
+        return {'n_outputs0': angle, 'n_outputs1': throttle}
 
     # change: have to get enc/speed from records and set as input variable
     # possible error: this code normally saves a vector, we're using a float
@@ -840,13 +841,14 @@ class KerasVelocity(KerasPilot):
         # the keys need to match the models input/output layers
         shapes = ({'img_in': tf.TensorShape(img_shape),
                    'speed_in': tf.TensorShape([self.num_inputs])},
-                  {'out_0': tf.TensorShape([]),
-                   'out_1': tf.TensorShape([])})
+                  {'n_outputs0': tf.TensorShape([]),
+                   'n_outputs1': tf.TensorShape([])})
         return shapes
 
 
+
 # copied from default_imu
-def default_velocity(num_outputs, num_inputs, input_shape):
+def default_velocity(num_outputs, num_inputs, input_shape=(120, 160, 3)):
     drop = 0.2
     img_in = Input(shape=input_shape, name='img_in')
     speed_in = Input(shape=(num_inputs,), name="speed_in")
@@ -868,7 +870,7 @@ def default_velocity(num_outputs, num_inputs, input_shape):
 
     outputs = []
     for i in range(num_outputs):
-        outputs.append(Dense(1, activation='linear', name='out_' + str(i))(z))
+        outputs.append(Dense(1, activation='linear', name='n_outputs' + str(i))(z))
     
     # I'm hoping that the name is just something you can change since this used to be imu    
     model = Model(inputs=[img_in, speed_in], outputs=outputs, name='velocity')
