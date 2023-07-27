@@ -460,7 +460,6 @@ class KerasInferred(KerasPilot):
                   {'n_outputs0': tf.TensorShape([])})
         return shapes
 
-
 class KerasIMU(KerasPilot):
     """
     A Keras part that take an image and IMU vector as input,
@@ -780,46 +779,82 @@ class KerasLatent(KerasPilot):
         return steering[0][0], throttle[0][0]
 
 
-class KerasVelocity(KerasPilot):
+class KerasVelocity(KerasLinear):
     """
     The KerasVelocity pilot uses one neuron to output a continuous value via
     the Keras Dense layer with linear activation. One each for steering and
     throttle. The output is not bounded. The only difference between this and 
-    KerasLinear is that this uses speed as input instead of throttle
+    KerasLinear is that this uses current speed as an additional input to the
+    CNN
     """
+    # change: set number of additional inputs
     def __init__(self,
-                 interpreter: Interpreter = KerasInterpreter(),
-                 input_shape: Tuple[int, ...] = (120, 160, 3),
-                 num_outputs: int = 2):
+             interpreter: Interpreter = KerasInterpreter(),
+             input_shape: Tuple[int, ...] = (120, 160, 3),
+             num_outputs: int = 2, num_inputs: int = 1):
         self.num_outputs = num_outputs
-        super().__init__(interpreter, input_shape)
+        self.num_inputs = num_inputs
+        super().__init__(interpreter, input_shape)    
 
+    # just calling the CNN function that is basically the same as IMU
     def create_model(self):
-        return default_n_linear(self.num_outputs, self.input_shape)
+        return default_velocity(num_outputs=self.num_outputs,
+                           num_inputs=self.num_inputs,
+                           input_shape=self.input_shape)
 
-    def compile(self):
-        self.interpreter.compile(optimizer=self.optimizer, loss='mse')
-
-    def interpreter_to_output(self, interpreter_out):
-        steering = interpreter_out[0]
-        throttle = interpreter_out[1]
-        return steering[0], throttle[0]
-
-    def y_transform(self, record: Union[TubRecord, List[TubRecord]]) \
-            -> Dict[str, Union[float, List[float]]]:
+    # change: have to get enc/speed from records and set as input variable
+    # possible error: this code normally saves a vector, we're using a float
+    def x_transform(
+            self,
+            record: Union[TubRecord, List[TubRecord]],
+            img_processor: Callable[[np.ndarray], np.ndarray]) \
+            -> Dict[str, Union[float, np.ndarray]]:
+            # this transforms the record into x for training the model to x,y
         assert isinstance(record, TubRecord), 'TubRecord expected'
-        angle: float = record.underlying['user/angle']
-        throttle: float = record.underlying['enc/speed']
-        return {'n_outputs0': angle, 'n_outputs1': throttle}
-
+        img_arr = record.image(processor=img_processor)
+        speed_arr = record.underlying['enc/speed']
+        return {'img_in': img_arr, 'speed_in': speed_arr}
+    
+    # change: give shapes additional input shape based on speed input
     def output_shapes(self):
         # need to cut off None from [None, 120, 160, 3] tensor shape
         img_shape = self.get_input_shapes()[0][1:]
-        shapes = ({'img_in': tf.TensorShape(img_shape)},
-                  {'n_outputs0': tf.TensorShape([]),
-                   'n_outputs1': tf.TensorShape([])})
+        # the keys need to match the models input/output layers
+        shapes = ({'img_in': tf.TensorShape(img_shape),
+                   'speed_in': tf.TensorShape([self.num_inputs])},
+                  {'out_0': tf.TensorShape([]),
+                   'out_1': tf.TensorShape([])})
         return shapes
 
+
+# copied from default_imu
+def default_velocity(num_outputs, num_inputs, input_shape):
+    drop = 0.2
+    img_in = Input(shape=input_shape, name='img_in')
+    speed_in = Input(shape=(num_inputs,), name="speed_in")
+
+    x = core_cnn_layers(img_in, drop)
+    x = Dense(100, activation='relu')(x)
+    x = Dropout(.1)(x)
+    
+    y = speed_in
+    y = Dense(14, activation='relu')(y)
+    y = Dense(14, activation='relu')(y)
+    y = Dense(14, activation='relu')(y)
+    
+    z = concatenate([x, y])
+    z = Dense(50, activation='relu')(z)
+    z = Dropout(.1)(z)
+    z = Dense(50, activation='relu')(z)
+    z = Dropout(.1)(z)
+
+    outputs = []
+    for i in range(num_outputs):
+        outputs.append(Dense(1, activation='linear', name='out_' + str(i))(z))
+    
+    # I'm hoping that the name is just something you can change since this used to be imu    
+    model = Model(inputs=[img_in, speed_in], outputs=outputs, name='velocity')
+    return model
 
 
 def conv2d(filters, kernel, strides, layer_num, activation='relu'):
