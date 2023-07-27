@@ -106,7 +106,7 @@ class KerasPilot(ABC):
         :return:            tuple of (angle, throttle)
         """
         norm_arr = normalize_image(img_arr)
-        np_other_array = np.array(other_arr) if other_arr else None
+        np_other_array = np.array(other_arr) #if other_arr else Non
         return self.inference(norm_arr, np_other_array)
 
     def inference(self, img_arr: np.ndarray, other_arr: Optional[np.ndarray]) \
@@ -119,6 +119,7 @@ class KerasPilot(ABC):
                                 state vector in the Behavioural model
             :return:            tuple of (angle, throttle)
         """
+        print(f"recorded speed: ", other_arr)
         out = self.interpreter.predict(img_arr, other_arr)
         return self.interpreter_to_output(out)
 
