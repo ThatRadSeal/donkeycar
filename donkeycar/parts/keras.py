@@ -840,8 +840,9 @@ class KerasVelocity(KerasPilot):
         img_shape = self.get_input_shapes()[0][1:]
         # the keys need to match the models input/output layers
         shapes = ({'img_in': tf.TensorShape(img_shape),
-                   'speed_in': tf.TensorShape([self.num_inputs])},
-                  {'n_outputs0': tf.TensorShape([]),
+                   #'speed_in': tf.TensorShape([self.num_inputs])},
+                    'speed_in': tf.TensorShape([])},
+                   {'n_outputs0': tf.TensorShape([]),
                    'n_outputs1': tf.TensorShape([])})
         return shapes
 
