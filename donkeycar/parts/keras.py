@@ -779,7 +779,7 @@ class KerasLatent(KerasPilot):
         return steering[0][0], throttle[0][0]
 
 
-class KerasVelocity(KerasLinear):
+class KerasVelocity(KerasPilot):
     """
     The KerasVelocity pilot uses one neuron to output a continuous value via
     the Keras Dense layer with linear activation. One each for steering and
@@ -801,6 +801,24 @@ class KerasVelocity(KerasLinear):
         return default_velocity(num_outputs=self.num_outputs,
                            num_inputs=self.num_inputs,
                            input_shape=self.input_shape)
+
+    def compile(self):
+        self.interpreter.compile(optimizer=self.optimizer, loss='mse')
+
+
+    def interpreter_to_output(self, interpreter_out) \
+            -> Tuple[Union[float, np.ndarray], ...]:
+        steering = interpreter_out[0]
+        throttle = interpreter_out[1]
+        return steering[0], throttle[0]
+
+    
+    def y_transform(self, record: Union[TubRecord, List[TubRecord]]) \
+            -> Dict[str, Union[float, List[float]]]:
+        assert isinstance(record, TubRecord), "TubRecord expected"
+        angle: float = record.underlying['user/angle']
+        throttle: float = record.underlying['user/throttle']
+        return {'out_0': angle, 'out_1': throttle}
 
     # change: have to get enc/speed from records and set as input variable
     # possible error: this code normally saves a vector, we're using a float
