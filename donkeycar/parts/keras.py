@@ -822,8 +822,8 @@ class KerasVelocity(KerasLinear):
         # the keys need to match the models input/output layers
         shapes = ({'img_in': tf.TensorShape(img_shape),
                    'speed_in': tf.TensorShape([self.num_inputs])},
-                  {'n_outputs0': tf.TensorShape([]),
-                   'n_outputs1': tf.TensorShape([])})
+                  {'out_0': tf.TensorShape([]),
+                   'out_1': tf.TensorShape([])})
         return shapes
 
 
