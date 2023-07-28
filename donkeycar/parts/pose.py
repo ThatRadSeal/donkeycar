@@ -81,6 +81,7 @@ class BicyclePose:
         if self.running:
             if self.tachometer:
                 throttle, steering = self.inputs
+                print(steering)
                 if isinstance(self.encoder, MockEncoder):
                     self.encoder.run(throttle, timestamp)
                 revolutions, timestamp = self.tachometer.run(throttle, timestamp)
