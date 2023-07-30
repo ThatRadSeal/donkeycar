@@ -378,7 +378,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             inputs = ['cam/image_array', 'lidar/dist_array']
 
         elif cfg.HAVE_ODOM:
-            inputs = ['cam/image_array', 'enc/speed']
+            inputs = ['cam/image_array']#, 'enc/speed']
 
         elif model_type == "imu":
             assert cfg.HAVE_IMU, 'Missing imu parameter in config'
@@ -397,8 +397,13 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
 
         #
         # collect model inference outputs
+        # - velocity models output normalized forward and angular velocities
+        # - other models output normalize throttle and steering values
         #
-        outputs = ['pilot/angle', 'pilot/throttle']
+        if is_velocity_model:
+            outputs = ['pilot/angle', 'pilot/norm_forward_velocity']
+        else:
+            outputs = ['pilot/angle', 'pilot/throttle']
 
         if cfg.TRAIN_LOCALIZER:
             outputs.append("pilot/loc")
@@ -984,8 +989,8 @@ def add_speed_control(V, cfg, is_differential_drive):
             run_condition="use_speed_control")
 
         # convert steering angle to normalized value that drivetrains expect
-        V.add(NormalizeSteeringAngle(cfg.MAX_STEERING_ANGLE, cfg.STEERING_ZERO),
-            inputs=["steering_angle"], outputs=["angle"], run_condition="use_speed_control")
+        # V.add(NormalizeSteeringAngle(cfg.MAX_STEERING_ANGLE),
+        #     inputs=["steering_angle"], outputs=["angle"], run_condition="use_speed_control")
 
         # add a speed controller to maintain the desired speed
         speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
