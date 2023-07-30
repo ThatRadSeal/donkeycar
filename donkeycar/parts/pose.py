@@ -86,8 +86,8 @@ class BicyclePose:
                     self.encoder.run(throttle, timestamp)
                 revolutions, timestamp = self.tachometer.run(throttle, timestamp)
                 distance, velocity, timestamp = self.odometer.run(revolutions, timestamp)
-                steering_angle = self.steerer.run(steering)
-                self.reading = self.bicycle.run(distance, steering_angle, timestamp)
+                #steering_angle = self.steerer.run(steering)
+                self.reading = self.bicycle.run(distance, steering, timestamp)
 
     def update(self):
         """
