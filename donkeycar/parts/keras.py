@@ -780,6 +780,21 @@ class KerasLatent(KerasPilot):
         return steering[0][0], throttle[0][0]
 
 
+class KerasVelocityOutput(KerasLinear):
+    
+    def interpreter_to_output(self, interpreter_out):
+        steering = interpreter_out[0]
+        velocity = interpreter_out[1]
+        return steering[0], velocity[0]
+
+    def y_transform(self, record: Union[TubRecord, List[TubRecord]]) \
+            -> Dict[str, Union[float, List[float]]]:
+        assert isinstance(record, TubRecord), 'TubRecord expected'
+        angle: float = record.underlying['user/angle']
+        velocity: float = record.underlying['enc/speed']
+        return {'n_outputs0': angle, 'n_outputs1': velocity}
+
+
 class KerasVelocity(KerasPilot):
     """
     The KerasVelocity pilot uses one neuron to output a continuous value via
