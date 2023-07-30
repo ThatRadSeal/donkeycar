@@ -35,6 +35,8 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
+from donkeycar.parts.velocity import StepSpeedController
+from donkeycar.parts.velocity import VelocityNormalize, VelocityUnnormalize
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
 from donkeycar.parts.kinematics import Bicycle, InverseBicycle, BicycleUnnormalizeAngularVelocity
@@ -71,6 +73,10 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             model_type = "behavior"
         else:
             model_type = cfg.DEFAULT_MODEL_TYPE
+
+    is_velocity_model = model_type.contains("velocity")
+    have_speed_control = cfg.HAVE_ODOM and is_velocity_model
+    is_differential_drive = cfg.DRIVE_TRAIN_TYPE.startswith("DC_TWO_WHEEL")
 
     # Initialize car
     V = dk.vehicle.Vehicle()
@@ -452,7 +458,17 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
                   'pilot/angle', 'pilot/throttle'],
           outputs=['steering', 'throttle'])
 
+    
+    if have_speed_control:
+            #
+            # We are using a velocity model,
+            # so we use speed control to maintain the desired velocity.
+            # Add speed controller that takes a speed in meters per second
+            # and maintains that speed by modifying the throttle.
+            #
+            add_speed_control(V, cfg, is_differential_drive)
 
+              
     if (cfg.CONTROLLER_TYPE != "pigpio_rc") and (cfg.CONTROLLER_TYPE != "MM1"):
         if isinstance(ctr, JoystickController):
             ctr.set_button_down_trigger(cfg.AI_LAUNCH_ENABLE_BUTTON, aiLauncher.enable_ai_launch)
@@ -920,6 +936,63 @@ def add_imu(V, cfg):
         V.add(imu, outputs=['imu/acl_x', 'imu/acl_y', 'imu/acl_z',
                             'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z'], threaded=True)
     return imu
+
+def add_speed_control(V, cfg, is_differential_drive):
+    """
+    Add a speed controller to maintain a desired velocity.
+    The speed controller that takes a speed in meters per second
+    and maintains that speed by modifying the throttle.
+    :param V: the vehicle pipeline.
+              On output this may be modified.
+    :param cfg: the configuration (from myconfig.py)    """
+    # TODO: This uses a simple step controller: make speed controller pluggable/configurable.
+    if is_differential_drive:
+        #
+        # Use inverse kinematics to convert steering angle and speed into
+        # individual wheel speeds.
+        #
+        kinematics = InverseUnicycle(cfg.AXLE_LENGTH, cfg.WHEEL_RADIUS, cfg.MIN_SPEED, cfg.MAX_SPEED)
+        V.add(kinematics,
+            inputs=["speed", "angular_velocity", "enc/timestamp"],
+            outputs=["left/speed", "right/speed", "nul"],
+            run_condition="use_speed_control")
+
+        #
+        # Add a speed controller to each wheel to maintain the speed and turn angle.
+        # The speed controller takes measured speed and desired speed and modifies
+        # the throttle to achieve the desired speed.
+        #
+        speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+        V.add(speed_controller,
+            inputs=["left/throttle", "enc/left/speed", "left/speed"],
+            outputs=["left/throttle"],
+            run_condition="use_speed_control")
+        speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+        V.add(speed_controller,
+            inputs=["left/throttle", "enc/right/speed", "right/speed"],
+            outputs=["right/throttle"],
+            run_condition="use_speed_control")
+
+    else: # car-type vehicle
+        #
+        # use bicycle inverse kinematics to get steering angle
+        #
+        kinematics = InverseBicycle(cfg.WHEEL_BASE)
+        V.add(kinematics,
+            inputs=["speed", "angular_velocity", "enc/timestamp"],
+            outputs=["speed", "steering_angle", "nul"],
+            run_condition="use_speed_control")
+
+        # convert steering angle to normalized value that drivetrains expect
+        V.add(NormalizeSteeringAngle(cfg.MAX_STEERING_ANGLE, cfg.STEERING_ZERO),
+            inputs=["steering_angle"], outputs=["angle"], run_condition="use_speed_control")
+
+        # add a speed controller to maintain the desired speed
+        speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+        V.add(speed_controller,
+            inputs=["throttle", "enc/speed", "speed"],
+            outputs=["throttle"],
+            run_condition="use_speed_control")
 
 
 #
