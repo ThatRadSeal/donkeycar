@@ -133,6 +133,7 @@ class KerasInterpreter(Interpreter):
         self.model.compile(**kwargs)
 
     def invoke(self, inputs):
+        print(f"interpreter inputs: ", inputs)
         outputs = self.model(inputs, training=False)
         # for functional models the output here is a list
         if type(outputs) is list:
