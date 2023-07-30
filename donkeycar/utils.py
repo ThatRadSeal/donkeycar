@@ -488,7 +488,7 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
     '''
     from donkeycar.parts.keras import KerasCategorical, KerasLinear, \
         KerasInferred, KerasIMU, KerasMemory, KerasBehavioral, KerasLocalizer, \
-        KerasLSTM, Keras3D_CNN, KerasVelocity
+        KerasLSTM, Keras3D_CNN, KerasVelocity, KerasVelocityOutput
 # ^ added KerasVelocity for testing
     from donkeycar.parts.interpreter import KerasInterpreter, TfLite, TensorRT, \
         FastAIInterpreter
@@ -549,6 +549,8 @@ def get_model_by_type(model_type: str, cfg: 'Config') -> Union['KerasPilot', 'Fa
     elif model_type == 'velocity':
         kl = KerasVelocity(interpreter=interpreter, input_shape=input_shape)
 #############
+    elif model_type == 'velocity_output':
+        kl = KerasVelocityOutput(interpreter=interpreter, input_shape=input_shape)
     else:
         known = [k + u for k in ('', 'tflite_', 'tensorrt_')
                  for u in used_model_type.mem]
