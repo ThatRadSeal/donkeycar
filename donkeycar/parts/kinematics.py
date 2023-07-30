@@ -577,7 +577,9 @@ class UnnormalizeSteeringAngle:
                 positive radians is a left turn,
                 negative radians is a right turn
         """
+        print(f"kinematics is_number_type(steering): ", is_number_type(steering))
         if not is_number_type(steering):
+            print(f"Kinematics.py steering: ", steering)
             logger.error("steering must be a number")
             return 0
 
