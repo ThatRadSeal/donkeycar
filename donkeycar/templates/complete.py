@@ -74,7 +74,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         else:
             model_type = cfg.DEFAULT_MODEL_TYPE
 
-    is_velocity_model = model_type.contains("velocity")
+    is_velocity_model = "velocity" in model_type
     have_speed_control = cfg.HAVE_ODOM and is_velocity_model
     is_differential_drive = cfg.DRIVE_TRAIN_TYPE.startswith("DC_TWO_WHEEL")
 
