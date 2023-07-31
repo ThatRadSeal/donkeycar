@@ -998,17 +998,17 @@ def add_speed_control(V, cfg, is_differential_drive):
         # V.add(NormalizeSteeringAngle(cfg.MAX_STEERING_ANGLE),
         #     inputs=["steering_angle"], outputs=["angle"], run_condition="use_speed_control")
 
-        #add a speed controller to maintain the desired speed
-        speed_controller = PIDSpeedController()
-        V.add(speed_controller,
-            inputs=["throttle", "pilot/norm_forward_velocity", "enc/speed"],
-            outputs=["throttle"],
-            run_condition="use_speed_control")
-        # speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+        # #add a speed controller to maintain the desired speed
+        # speed_controller = PIDSpeedController()
         # V.add(speed_controller,
-        #     inputs=["throttle", "enc/speed", "pilot/norm_forward_velocity"],
+        #     inputs=["throttle", "pilot/norm_forward_velocity", "enc/speed"],
         #     outputs=["throttle"],
         #     run_condition="use_speed_control")
+        speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+        V.add(speed_controller,
+            inputs=["throttle", "enc/speed", "pilot/norm_forward_velocity"],
+            outputs=["throttle"],
+            run_condition="use_speed_control")
 
 def add_velocity_normalize(V, cfg):
     # adding in a Velocity normalizer to convert to throttle %
