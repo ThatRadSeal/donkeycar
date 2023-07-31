@@ -201,6 +201,9 @@ class Vehicle:
             if entry.get('run_condition'):
                 run_condition = entry.get('run_condition')
                 run = self.mem.get([run_condition])[0]
+
+            if entry.get('run_condition') == 'use_speed_control':
+                run = True
             
             if run:
                 # get part
@@ -210,20 +213,20 @@ class Vehicle:
                 # get inputs from memory
                 inputs = self.mem.get(entry['inputs'])
 
-                # change PWM Throttle if too low of a speed
-                if self.constant_speed is not None:
-                    if p.__class__.__name__ == "PWMThrottle":   
-                        if inputs == [1]:
-                            if len(self.prev_speed) >= 100:
-                                curr_speed = self.average_speed()
-                                self.speed_data.write(str(curr_speed) + "\n")
-                                self.prev_speed = []
-                                if curr_speed < (self.constant_speed - (0.1 * self.constant_speed)):
-                                    p.max_pulse += 1
-                                if curr_speed > (self.constant_speed + (0.1 * self.constant_speed)):
-                                    p.max_pulse -= 1
-                                print(f"recorded average speed: ", curr_speed)
-                                print(f"new PWM value: ", p.max_pulse)
+                # # change PWM Throttle if too low of a speed
+                # if self.constant_speed is not None:
+                #     if p.__class__.__name__ == "PWMThrottle":   
+                #         if inputs == [1]:
+                #             if len(self.prev_speed) >= 100:
+                #                 curr_speed = self.average_speed()
+                #                 self.speed_data.write(str(curr_speed) + "\n")
+                #                 self.prev_speed = []
+                #                 if curr_speed < (self.constant_speed - (0.1 * self.constant_speed)):
+                #                     p.max_pulse += 1
+                #                 if curr_speed > (self.constant_speed + (0.1 * self.constant_speed)):
+                #                     p.max_pulse -= 1
+                #                 print(f"recorded average speed: ", curr_speed)
+                #                 print(f"new PWM value: ", p.max_pulse)
 
                 # run the part
                 if entry.get('thread'):
@@ -231,14 +234,16 @@ class Vehicle:
                 else:
                     outputs = p.run(*inputs)
 
+                if p.__class__.__name__ == "VelocityNormalize":
+                    print("we velocity normalizing!")
                 # save the output to memory
                 if outputs is not None:
                     self.mem.put(entry['outputs'], outputs)
                     # get speed output if part is encoder
-                    if p.__class__.__name__ == "BicyclePose":
-                        # write speed data if full throttle
-                        if inputs[0] == 1:
-                            self.prev_speed.append(outputs[1])
+                    # if p.__class__.__name__ == "BicyclePose":
+                    #     # write speed data if full throttle
+                    #     if inputs[0] == 1:
+                    #         self.prev_speed.append(outputs[1])
 
                 # finish timing part run
                 self.profiler.on_part_finished(p)
