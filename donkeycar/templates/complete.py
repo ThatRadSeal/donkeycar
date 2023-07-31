@@ -407,7 +407,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
 
         if cfg.TRAIN_LOCALIZER:
             outputs.append("pilot/loc")
-
+        
         #
         # Add image transformations like crop or trapezoidal mask
         # so they get applied at inference time in autopilot mode.
@@ -472,6 +472,12 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             # and maintains that speed by modifying the throttle.
             #
             add_speed_control(V, cfg, is_differential_drive)
+
+    speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+    V.add(speed_controller,
+        inputs=["throttle", "enc/speed", 1.5],
+        outputs=["throttle"],
+        run_condition="use_speed_control")
 
               
     if (cfg.CONTROLLER_TYPE != "pigpio_rc") and (cfg.CONTROLLER_TYPE != "MM1"):
@@ -983,10 +989,10 @@ def add_speed_control(V, cfg, is_differential_drive):
         # use bicycle inverse kinematics to get steering angle
         #
         kinematics = InverseBicycle(cfg.WHEEL_BASE)
-        V.add(kinematics,
-            inputs=["speed", "angular_velocity", "enc/timestamp"],
-            outputs=["speed", "steering_angle", "nul"],
-            run_condition="use_speed_control")
+        # V.add(kinematics,
+        #     inputs=["speed", "angular_velocity", "enc/timestamp"],
+        #     outputs=["speed", "steering_angle", "nul"],
+        #     run_condition="use_speed_control")
 
         # convert steering angle to normalized value that drivetrains expect
         # V.add(NormalizeSteeringAngle(cfg.MAX_STEERING_ANGLE),
@@ -995,9 +1001,17 @@ def add_speed_control(V, cfg, is_differential_drive):
         # add a speed controller to maintain the desired speed
         speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
         V.add(speed_controller,
-            inputs=["throttle", "enc/speed", "speed"],
+            inputs=["throttle", "enc/speed", "pilot/norm_forward_velocity"],
             outputs=["throttle"],
             run_condition="use_speed_control")
+
+def add_velocity_normalize(V, cfg):
+    # adding in a Velocity normalizer to convert to throttle %
+    velocity_normalizer = VelocityNormalize(cfg.MIN_SPEED, cfg.MAX_SPEED)
+    V.add(velocity_normalizer,
+          inputs=["pilot/norm_forward_velocity"],
+          outputs=["throttle"],
+        run_condition="use_speed_control")
 
 
 #
