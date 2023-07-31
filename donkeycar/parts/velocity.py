@@ -125,3 +125,22 @@ class StepSpeedController:
             throttle += self.step_size
 
         return target_direction * throttle
+
+
+class PIDSpeedController:
+    #part to smoothly adjust steering
+    def __init__(self, kp=1.0, ki=0.1, kd=0.01):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.prev_error = 0
+        self.integral = 0
+
+    #take in current speed from encoder data as well as target speed from model
+    def run(self, target_speed, current_speed):
+        error = target_speed - current_speed
+        self.integral += error
+        derivative = error - self.prev_error
+        self.prev_error = error
+        return self.kp * error + self.ki * self.integral + self.kd * derivative
+
