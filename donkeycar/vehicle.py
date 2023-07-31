@@ -75,6 +75,7 @@ class Vehicle:
         self.prev_speed = [0]
         self.speed_data = open("speed_data.txt", "a") # used for graphing speed
         self.speed_data.write("Record of enc/speed values:\n")
+        self.prev_velocity_output = 0.5
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -234,8 +235,21 @@ class Vehicle:
                 else:
                     outputs = p.run(*inputs)
 
-                if p.__class__.__name__ == "VelocityNormalize":
-                    print("we velocity normalizing!")
+                # if p.__class__.__name__ == "KerasVelocityOutput":
+                #     if outputs[1] <= 0.5:
+                #         x = list(outputs)
+                #         x[1] = self.prev_velocity_output
+                #         outputs = tuple(x)
+                #     else:
+                #         self.prev_velocity_output = outputs[1]
+
+                if p.__class__.__name__ == "StepSpeedController":
+                    print(f"PIDSpeedController Inputs: ", inputs)
+                    print(f"PIDSpeedController Outputs: ", outputs)
+
+                # if p.__class__.__name__ == "PWMThrottle":
+                #     print(f"PWMThrottle input: ", inputs)
+                
                 # save the output to memory
                 if outputs is not None:
                     self.mem.put(entry['outputs'], outputs)
