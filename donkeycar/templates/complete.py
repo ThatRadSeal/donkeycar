@@ -35,7 +35,7 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
-from donkeycar.parts.velocity import StepSpeedController
+from donkeycar.parts.velocity import StepSpeedController, PIDSpeedController
 from donkeycar.parts.velocity import VelocityNormalize, VelocityUnnormalize
 from donkeycar.parts.kinematics import NormalizeSteeringAngle, UnnormalizeSteeringAngle, TwoWheelSteeringThrottle
 from donkeycar.parts.kinematics import Unicycle, InverseUnicycle, UnicycleUnnormalizeAngularVelocity
@@ -473,11 +473,11 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             #
             add_speed_control(V, cfg, is_differential_drive)
 
-    speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
-    V.add(speed_controller,
-        inputs=["throttle", "enc/speed", 1.5],
-        outputs=["throttle"],
-        run_condition="use_speed_control")
+    # speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
+    # V.add(speed_controller,
+    #     inputs=["throttle", "enc/speed", 1.5],
+    #     outputs=["throttle"],
+    #     run_condition="use_speed_control")
 
               
     if (cfg.CONTROLLER_TYPE != "pigpio_rc") and (cfg.CONTROLLER_TYPE != "MM1"):
@@ -999,11 +999,11 @@ def add_speed_control(V, cfg, is_differential_drive):
         #     inputs=["steering_angle"], outputs=["angle"], run_condition="use_speed_control")
 
         # add a speed controller to maintain the desired speed
-        speed_controller = StepSpeedController(cfg.MIN_SPEED, cfg.MAX_SPEED, (1.0 - cfg.MIN_THROTTLE) / 255, cfg.MIN_THROTTLE)
-        V.add(speed_controller,
-            inputs=["throttle", "enc/speed", "pilot/norm_forward_velocity"],
-            outputs=["throttle"],
-            run_condition="use_speed_control")
+        #speed_controller = PIDSpeedController()
+        # V.add(speed_controller,
+        #     inputs=["throttle", "pilot/norm_forward_velocity", "enc/speed"],
+        #     outputs=["throttle"],
+        #     run_condition="use_speed_control")
 
 def add_velocity_normalize(V, cfg):
     # adding in a Velocity normalizer to convert to throttle %
