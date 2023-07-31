@@ -1,5 +1,5 @@
 import math
-from donkeycar.utils import map_frange, sign
+from donkeycar.utils import map_frange, sign, clamp
 
 class VelocityNormalize:
     """
@@ -129,18 +129,37 @@ class StepSpeedController:
 
 class PIDSpeedController:
     #part to smoothly adjust steering
-    def __init__(self, kp=1.0, ki=0.1, kd=0.01):
+    def __init__(self, kp=1.1, ki=0.07, kd=0.0):
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.prev_error = 0
         self.integral = 0
+        self.prev_speed = 0.0
+        self.min_speed = 0.2
 
     #take in current speed from encoder data as well as target speed from model
-    def run(self, target_speed, current_speed):
+    def run(self, throttle:float, target_speed:float, current_speed:float):
+        if current_speed is None or target_speed is None:
+            # no speed to control, just return throttle
+            return throttle
+        
+        if current_speed == 0.0:
+            current_speed == self.prev_speed
+        else:
+            self.prev_speed = current_speed
+
+
+        if self.integral > 0.5:
+            self.integral = 0.5
+        
         error = target_speed - current_speed
         self.integral += error
         derivative = error - self.prev_error
         self.prev_error = error
-        return self.kp * error + self.ki * self.integral + self.kd * derivative
-
+        result = clamp(self.kp * error + self.ki * self.integral + self.kd * derivative, -1.0, 1.0)
+        
+        if 0 <= self.min_speed <= self.min_speed:
+            return self.min_speed
+        else:
+            return result
