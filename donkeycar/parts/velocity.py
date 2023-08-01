@@ -74,6 +74,7 @@ class StepSpeedController:
         self.max_speed = max_speed
         self.min_throttle = min_throttle
         self.step_size = throttle_step
+        self.prev_throttle = 0
     
     def run(self, throttle:float, speed:float, target_speed:float) -> float:
         """
@@ -87,7 +88,7 @@ class StepSpeedController:
         """
         if speed is None or target_speed is None:
             # no speed to control, just return throttle
-            return throttle
+            return self.prev_throttle
 
         target_direction = sign(target_speed)
         direction = sign(speed)
@@ -117,13 +118,17 @@ class StepSpeedController:
         # 
         # modify throttle
         #
+        throttle = self.prev_throttle
+        print(f'This is the throttle being used: ', throttle)
         if speed > target_speed:
             # too fast, slow down
             throttle -= self.step_size
-        elif speed > target_speed:
+        elif speed < target_speed:
             # too slow, speed up
             throttle += self.step_size
 
+        self.prev_throttle = throttle
+        print(f'new self.prev_throttle: ', self.prev_throttle)
         return target_direction * throttle
 
 
